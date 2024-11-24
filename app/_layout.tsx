@@ -1,39 +1,52 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import React, { useEffect, useState } from "react";
+import { StatusBar, useColorScheme } from "react-native";
+import { lightTheme, darkTheme } from "@/src/lib/theme";
+import {
+  DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationDefaultTheme,
+} from "@react-navigation/native";
+import { Slot } from "expo-router";
+import {
+  MD3DarkTheme,
+  MD3LightTheme,
+  PaperProvider,
+  adaptNavigationTheme,
+} from "react-native-paper";
+import { AuthProvider } from "@/src/contexts/AuthContext";
+import merge from "deepmerge";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+const customlightTheme = { ...MD3LightTheme, lightTheme };
+const customDarkTheme = { ...MD3DarkTheme, darkTheme };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+const { LightTheme, DarkTheme } = adaptNavigationTheme({
+  reactNavigationLight: NavigationDefaultTheme,
+  reactNavigationDark: NavigationDarkTheme,
+});
+
+const CombinedDefaultTheme = merge(LightTheme, customlightTheme);
+const CombinedDarkTheme = merge(DarkTheme, customDarkTheme);
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const [isMounted, setIsMounted] = useState(false);
+
+  const theme =
+    colorScheme === "dark" ? CombinedDarkTheme : CombinedDefaultTheme;
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    setIsMounted(true);
+  }, []);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!isMounted) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <PaperProvider theme={theme}>
+        <Slot />
+        <StatusBar
+          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        />
+      </PaperProvider>
+    </AuthProvider>
   );
 }
